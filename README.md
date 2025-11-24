@@ -5,7 +5,7 @@ This project trains a reinforcement learning (RL) agent to play Downfall, a 3D o
 The agent receives information about the environment using raycasts from Godot and outputs continuous control actions for movement and jumping.
 
 ---
-## 11. Contributors
+## Contributors
 
 - Aman Kumar Prajapati (22BEC006)  
 - Arjit Verma (22BCS015)  
