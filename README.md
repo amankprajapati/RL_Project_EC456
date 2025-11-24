@@ -1,4 +1,4 @@
-# Downfall - Reinforcement Learning Agent
+# Downfall: PPO Trained Agent for a 4 Stage Godot Obstacle Course
 
 This project trains a reinforcement learning (RL) agent to play Downfall, a 3D obstacle course game inspired by Fall Guys, built with the Godot engine. The game has four stages that must be cleared in a single run. The agent is trained with PPO (Proximal Policy Optimization) and acts without human input once training is complete.
 
@@ -17,7 +17,7 @@ The agent receives information about the environment using raycasts from Godot a
 7. Training progression and logs  
 8. Accuracy testing and evaluation protocol  
 9. How to run the project  
-10. Media (video and images)  
+10. Media (videos and images)  
 11. Repository structure  
 
 ---
@@ -68,11 +68,11 @@ Key Godot pieces used in this project:
 - `ai_controller.gd` (name may differ in your project)  
   - Bridge between Godot and the Python training process  
   - Exposes functions such as:
-    - `get_obs()` - builds the observation vector  
-    - `get_obs_space()` and `get_action_space()` - describe observation and action sizes  
-    - `set_action(action)` - applies agent actions to the player  
-    - `get_reward()` - returns numeric reward since last step and resets it  
-    - `reset()` - resets the environment to the start of stage 1 and clears internal counters
+    - `get_obs()` builds the observation vector  
+    - `get_obs_space()` and `get_action_space()` describe observation and action sizes  
+    - `set_action(action)` applies agent actions to the player  
+    - `get_reward()` returns numeric reward since last step and resets it  
+    - `reset()` resets the environment to the start of stage 1 and clears internal counters
 
 - Hazard and goal scripts such as `bomb.gd`, `falling_tile.gd`, `spike_roller.gd`, `swiper.gd`, `end_gate.gd`, `spawn_box.gd`  
   - Mark the player as dead when hit or when falling below a safe height  
@@ -402,15 +402,20 @@ This will load the saved PPO agent, run it in the Godot environment and display 
 
 ---
 
-## 10. Media (video and images)
+## 10. Media (videos and images)
 
-### 10.1 Training and gameplay video
+### 10.1 Training videos
 
-A short video showing the trained agent clearing all four stages:
+Replace each placeholder link with your actual video URLs.
 
-- [Downfall training and gameplay video](LINK_TO_TRAINING_VIDEO)
+- Training logs  
+  - [Training logs video](https://drive.google.com/file/d/1nDrVzh-0TOIlIWmmXZe013wXYlOuQ8bX/view?usp=sharing)
 
-Replace `LINK_TO_TRAINING_VIDEO` with the actual URL to your video recording (for example a YouTube link).
+- Training process run (video of the environment while PPO is learning)  
+  - [Training process video](https://drive.google.com/file/d/1RBJ7i1SjAhGZUmEBI54m4Q6yGqLcDBP7/view?usp=drive_link)
+
+- Trained agent inference (final agent playing all four stages)  
+  - [Trained agent inference video](https://drive.google.com/file/d/1MSikgtYT5v_RyvEKSfQAtSF6lBIJ14oB/view?usp=drive_link)
 
 ### 10.2 Screenshots
 
