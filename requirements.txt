@@ -1,0 +1,15 @@
+# Core RL and environment packages
+stable-baselines3==2.3.2
+torch>=2.0.0
+gymnasium>=0.28.0
+numpy>=1.24.0
+
+# Godot RL bridge
+godot-rl>=0.4.0
+
+# Logging and visualization
+tensorboard>=2.15.0
+
+# Optional: export and run models in ONNX format
+onnx>=1.15.0
+onnxruntime>=1.18.0
