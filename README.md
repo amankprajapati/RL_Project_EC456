@@ -382,7 +382,7 @@ This will load the saved PPO agent, run it in the Godot environment and display 
 
 ## 10. Media (videos and images)
 
-### 10.1 Training videos
+### 10.1 Training and Results video
 
 Replace each placeholder link with your actual video URLs.
 
