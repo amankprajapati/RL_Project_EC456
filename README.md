@@ -5,7 +5,7 @@ This project trains a reinforcement learning (RL) agent to play Downfall, a 3D o
 The agent receives information about the environment using raycasts from Godot and outputs continuous control actions for movement and jumping.
 
 ### Github Repo Link  
-  - [Click here](https://github.com/amankprajapati/RL_Project_EC456)
+  - [Click here for the github repo](https://github.com/amankprajapati/RL_Project_EC456)
 
 
 ---
