@@ -380,7 +380,7 @@ This will load the saved PPO agent, run it in the Godot environment and display 
 
 ---
 
-## 10. Media (videos and images)
+## 10. Media (videos of the output)
 
 ### 10.1 Training and Results video
 
