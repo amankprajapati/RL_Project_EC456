@@ -417,39 +417,6 @@ Replace each placeholder link with your actual video URLs.
 - Trained agent inference (final agent playing all four stages)  
   - [Trained agent inference video](https://drive.google.com/file/d/1MSikgtYT5v_RyvEKSfQAtSF6lBIJ14oB/view?usp=drive_link)
 
-### 10.2 Screenshots
 
-You can include images to better illustrate the environment and the agent behavior. Example layout:
 
-```markdown
-![Stage 1 overview](docs/images/stage1_overview.png)
-![Stage 2 obstacles](docs/images/stage2_obstacles.png)
-![Stage 3 moving hazards](docs/images/stage3_hazards.png)
-![Stage 4 final goal](docs/images/stage4_goal.png)
-![Agent mid training](docs/images/agent_mid_training.png)
-![Agent after training](docs/images/agent_after_training.png)
-```
 
-Update the file paths to match your repository structure.
-
----
-
-## 11. Repository structure
-
-A possible folder layout is:
-
-```text
-.
-├─ Downfall/                     Godot project
-├─ models/
-│  └─ downfall_ppo.zip           Saved PPO model
-├─ logs/
-│  └─ sb3/                       TensorBoard logs
-├─ docs/
-│  └─ images/                    Screenshots for README
-├─ train_downfall_ppo.py         Training and inference script
-├─ requirements.txt              Python dependencies
-└─ README.md                     This file
-```
-
-Folder and file names can be adjusted, but keeping a similar structure makes it easier to reproduce the results.
