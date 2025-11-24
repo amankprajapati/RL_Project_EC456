@@ -5,6 +5,15 @@ This project trains a reinforcement learning (RL) agent to play Downfall, a 3D o
 The agent receives information about the environment using raycasts from Godot and outputs continuous control actions for movement and jumping.
 
 ---
+## 11. Contributors
+
+- Aman Kumar Prajapati (22BEC006)  
+- Arjit Verma (22BCS015)  
+- Nabeel Ahsan (22BEC026)  
+- Arsalan Shaik (22BDS053)  
+- Subburi Dheeraj Verma (22BCS125)  
+
+---
 
 ## Table of contents
 
@@ -17,7 +26,7 @@ The agent receives information about the environment using raycasts from Godot a
 7. Training progression and logs  
 8. Accuracy testing and evaluation protocol  
 9. How to run the project  
-10. Media (videos and images)   
+10. Media (videos)   
 ---
 
 ## 1. Project overview
