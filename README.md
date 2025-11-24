@@ -281,7 +281,7 @@ Logged metrics include:
 - Policy loss  
 - Value loss  
 
-- Training logs  
+### Training logs  
   - [Training logs video](https://drive.google.com/file/d/1nDrVzh-0TOIlIWmmXZe013wXYlOuQ8bX/view?usp=sharing)
 ---
 
