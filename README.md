@@ -268,11 +268,9 @@ This design makes the reward logic easy to change without modifying the Python t
 
 ---
 
-## 7. Training progression and logs
+## 7. Training logs
 
 Training progression is recorded using TensorBoard.
-
-### 7.1 Logging setup
 
 When `tensorboard_log="logs/sb3"` is set in the PPO constructor, running `model.learn(...)` will create log files under `logs/sb3/downfall_ppo`.
 
@@ -283,26 +281,8 @@ Logged metrics include:
 - Policy loss  
 - Value loss  
 
-### 7.2 Viewing curves and saving screenshots
-
-To inspect the training process:
-
-```bash
-tensorboard --logdir logs/sb3
-```
-
-Open the URL printed in the terminal in a browser. Plots will show how mean reward and other metrics change over time.
-
-To include a training progression screenshot in this project:
-
-1. Open TensorBoard and select the plots you care about, for example mean episode reward vs timesteps.  
-2. Take a screenshot and save it, for example as `docs/images/training_curve.png`.  
-3. Add the image to the README:
-
-```markdown
-![Training progression](docs/images/training_curve.png)
-```
-
+- Training logs  
+  - [Training logs video](https://drive.google.com/file/d/1nDrVzh-0TOIlIWmmXZe013wXYlOuQ8bX/view?usp=sharing)
 ---
 
 ## 8. Accuracy testing and evaluation protocol
