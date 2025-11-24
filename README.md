@@ -17,9 +17,7 @@ The agent receives information about the environment using raycasts from Godot a
 7. Training progression and logs  
 8. Accuracy testing and evaluation protocol  
 9. How to run the project  
-10. Media (videos and images)  
-11. Repository structure  
-
+10. Media (videos and images)   
 ---
 
 ## 1. Project overview
