@@ -7,6 +7,10 @@ The agent receives information about the environment using raycasts from Godot a
 ### Github Repo Link  
   - [Click here for the github repo](https://github.com/amankprajapati/RL_Project_EC456)
 
+### Project Report Link  
+  - [Click here for the project report](https://drive.google.com/file/d/1tqpWsihrT76Vn89C3_c3Lp6g6C_-5ykm/view?usp=drive_link)
+
+
 
 ---
 ## Contributors
