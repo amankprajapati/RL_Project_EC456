@@ -1,244 +1,450 @@
+# Downfall - Reinforcement Learning Agent
 
-# Downfall – Reinforcement Learning Agent
+This project trains a reinforcement learning (RL) agent to play Downfall, a 3D obstacle course game inspired by Fall Guys, built with the Godot engine. The game has four stages that must be cleared in a single run. The agent is trained with PPO (Proximal Policy Optimization) and acts without human input once training is complete.
 
-This project trains a reinforcement learning (RL) agent to play **Downfall**, a Fall Guys–style 3D obstacle course built in Godot. The agent learns to control the player character and automatically clear levels using PPO (Proximal Policy Optimization) from Stable-Baselines3.
+The agent receives information about the environment using raycasts from Godot and outputs continuous control actions for movement and jumping.
 
 ---
 
-## 1. What is the task?
+## Table of contents
 
-The task is a **goal-directed navigation problem**:
+1. Project overview  
+2. Task description  
+3. Environment and observations  
+4. Training data (interaction data)  
+5. Steps to build and train the RL model  
+6. Reward model  
+7. Training progression and logs  
+8. Accuracy testing and evaluation protocol  
+9. How to run the project  
+10. Media (video and images)  
+11. Repository structure  
+
+---
+
+## 1. Project overview
+
+- Engine: Godot (3D project)  
+- Game name: Downfall  
+- Stages: 4 consecutive stages in one episode  
+- Control: RL agent controls the player character  
+- Algorithm: PPO from Stable Baselines3  
+- Observation source: Raycasts and high level state from Godot  
+- Action space: Continuous movement, rotation and jump  
+
+Goal: build an agent that reliably completes all four stages only from interaction and numeric rewards, without hard coded paths.
+
+---
+
+## 2. Task description
+
+The problem is a navigation and survival task in a four stage obstacle course.
 
 - The agent controls a player in a 3D level with:
-  - Platforms and tiles (some may fall or move).
-  - Dynamic hazards (e.g., bombs, rotating obstacles, moving objects).
-  - A finish gate / goal area.
-- An **episode** starts at a spawn point and ends when:
-  - The agent reaches the end gate (success),
-  - The agent falls off / dies / is hit by a critical hazard (failure), or
-  - A maximum step/time limit is reached (timeout).
-- The objective is to **maximize cumulative reward**, which corresponds to:
-  - Reaching the goal reliably,
-  - Doing it quickly,
-  - Avoiding deaths and unnecessary wandering.
+  - Static and moving platforms and tiles
+  - Gaps and holes
+  - Hazards such as bombs and moving obstacles
+  - A final goal area at the end of stage 4
+- The game is divided into four stages. When one stage is completed the player is moved to the next stage. An episode ends when either:
+  - The agent reaches the final goal after stage 4 (success), or
+  - The agent falls off the map, triggers a failure condition, or the time limit is reached (failure)
 
-The Godot scripts (`player.gd`, `ai_controller.gd`, `falling_tile.gd`, `bomb.gd`, `end_gate.gd`, `…`) define all in-game logic, hazards, and the link between the game and the RL agent.
+Episodes are repeated many times during training. The agent improves by trying to reach the goal more often and in fewer steps.
 
 ---
 
-## 2. What is the training dataset?
+## 3. Environment and observations
 
-There is **no static dataset** (no CSVs, no images).  
-The “dataset” is generated online by interacting with the environment.
+### 3.1 Godot scene and scripts
 
-At each step during training, the PPO algorithm collects transitions of the form:
+Key Godot pieces used in this project:
 
-\[
-(s_t, a_t, r_t, s_{t+1}, \text{done}_t)
-\]
+- `player.gd`  
+  - Extends `CharacterBody3D`  
+  - Applies movement, jumping, gravity and basic animation  
+  - Communicates with the RL bridge script  
+  - Maintains reward related signals such as progress and failure
 
-where:
+- `ai_controller.gd` (name may differ in your project)  
+  - Bridge between Godot and the Python training process  
+  - Exposes functions such as:
+    - `get_obs()` - builds the observation vector  
+    - `get_obs_space()` and `get_action_space()` - describe observation and action sizes  
+    - `set_action(action)` - applies agent actions to the player  
+    - `get_reward()` - returns numeric reward since last step and resets it  
+    - `reset()` - resets the environment to the start of stage 1 and clears internal counters
 
-- \( s_t \) (state / observation) is provided by `ai_controller.gd` via `get_obs()` and typically includes:
-  - Local environment information (e.g., raycast distances to nearby obstacles/ground),
-  - Relative distance and direction to the goal,
-  - Boolean flags such as “is the player on the ground?”,
-  - Level/phase indicators (e.g., one-hot encoding of current level).
-- \( a_t \) (action) is a continuous vector mapped to:
-  - Player movement (e.g., forward/back, left/right),
-  - Rotation/turning,
-  - Jump (continuous value thresholded to on/off in `set_action()`).
-- \( r_t \) (reward) is a scalar accumulated inside the Godot scripts (mainly `player.gd` and hazard scripts) and read by `get_reward()` in `ai_controller.gd`.
-- `done_t` signals whether the episode has ended (success, failure, or timeout).
+- Hazard and goal scripts such as `bomb.gd`, `falling_tile.gd`, `spike_roller.gd`, `swiper.gd`, `end_gate.gd`, `spawn_box.gd`  
+  - Mark the player as dead when hit or when falling below a safe height  
+  - Mark stages as completed when the player reaches the gate or goal trigger  
+  - Inform `player.gd` so that reward and episode termination flags can be updated
 
-The PPO trainer in Python batches these transitions (roughly `n_steps × n_parallel` per update) and uses them to update the policy and value networks.
+All four stages are built inside the Godot scene. Stage index is tracked so the reward and observations can depend on it.
+
+### 3.2 Observations from raycasts
+
+The agent does not see the whole game state. Instead, `ai_controller.gd` builds an observation vector from a limited set of signals:
+
+- Raycasts:
+  - Several rays are cast from the player character in different directions: forward, backward, left, right and downward
+  - For each ray we record:
+    - Normalized distance to the first object hit
+    - Simple type code for the object (ground, wall, hazard) encoded as a number
+
+- Goal related information:
+  - Vector from the player to the current stage goal or final gate (direction and distance)
+  - Stage index (1 to 4) or a set of four values where the current stage has value 1 and the others have value 0
+
+- Player state:
+  - On ground flag
+  - Current vertical velocity
+  - Optional high level flags, for example whether the player is currently jumping
+
+All these values are concatenated into a single numeric vector returned by `get_obs()` at every decision step.
+
+### 3.3 Action space
+
+The PPO policy outputs a continuous action vector, interpreted inside `set_action(action)` as:
+
+- Forward or backward movement value  
+- Left or right movement or rotation value  
+- Jump value (continuous output converted to jump or no jump using a threshold)
+
+Actions are applied each physics step in Godot. There is no built in script that tells the agent what to do. The policy learns which action values work best through the reward model described later.
 
 ---
 
-## 3. Steps to build and train the RL model
+## 4. Training data (interaction data)
 
-### 3.1. Environment setup (Godot side)
+There is no static offline dataset. Data is created while the agent interacts with the game.
 
-1. **Player script (`player.gd`)**
-   - Extends `CharacterBody3D` and implements:
-     - Movement, jumping, gravity, and animations.
-     - Links to the AI controller (e.g., `ai_controller` reference).
-     - Game events like `level_complete()`, `hit_by_bomb()`, `game_over()`, etc.
-   - Modifies a shared reward variable on important events (progress, success, death).
+At each step the following tuple is produced:
 
-2. **AI controller (`ai_controller.gd`)**
-   - Extends the Godot RL plugin base (e.g., `AIController3D`).
-   - Implements:
-     - `get_obs()` → returns a flattened observation vector.
-     - `get_obs_space()` → defines the observation space (box with given size).
-     - `get_action_space()` → describes continuous actions for move/turn/jump.
-     - `set_action(action)` → applies actions to the `player.gd` script.
-     - `get_reward()` → returns accumulated reward since last step and resets it.
-     - Episode bookkeeping: step counting, `done`, `needs_reset`, `reset()`.
+- `state_t`: observation vector from `get_obs()`  
+- `action_t`: action chosen by the policy network  
+- `reward_t`: scalar reward computed inside Godot and returned by `get_reward()`  
+- `state_t_plus_1`: next observation  
+- `done_t`: boolean that is true if the episode ended at this step
 
-3. **Hazards and goals**
-   - Scripts like `bomb.gd`, `falling_tile.gd`, `spike_roller.gd`, `swiper.gd`, `end_gate.gd`, `spawn_box.gd` define:
-     - When the player is hit, falls, or leaves the safe region.
-     - When the level is completed (e.g., entering the end gate’s trigger).
-     - They call methods on `player.gd` that adjust rewards and/or terminate episodes.
+These tuples are stored in memory in the PPO implementation. After a fixed number of steps, PPO uses this stored data to update the policy network and the value network.
 
-### 3.2. Training setup (Python side)
+The total size of the training data depends on the configured number of steps and how long training runs. With more time the agent sees more failures and successes across all four stages, which helps it learn more robust behavior.
 
-1. **Wrap the Godot environment**
+---
+
+## 5. Steps to build and train the RL model
+
+This section describes the training pipeline from the Godot project to a trained PPO model.
+
+### 5.1 Prepare the Godot project
+
+1. Open the Downfall project in Godot.  
+2. Confirm that:
+   - All four stages are connected so that the player moves from stage 1 to stage 4 in one episode  
+   - `player.gd` and `ai_controller.gd` are attached to the correct nodes  
+   - Hazard and gate scripts are connected to the correct signals  
+3. Implement and test the methods needed for RL:
+   - `get_obs()` returns a stable numeric vector
+   - `set_action(action)` moves the player according to the action
+   - `get_reward()` returns reward and resets the internal reward accumulator
+   - `reset()` resets stage, position, velocities, and internal flags
+4. Export the Godot project to a standalone binary that the Python script can start, for example:
+   - `Downfall.x86_64` on Linux  
+   - `Downfall.exe` on Windows  
+
+### 5.2 Wrap the Godot environment in Python
+
+We use a Stable Baselines compatible wrapper:
 
 ```python
 from godot_rl.wrappers.stable_baselines_wrapper import StableBaselinesGodotEnv
 from stable_baselines3.common.vec_env import VecMonitor
 
 env = StableBaselinesGodotEnv(
-    env_path=ARGS.env_path,    # path to Downfall.x86_64 / .exe
-    show_window=ARGS.viz,
-    seed=ARGS.seed,
-    n_parallel=ARGS.n_parallel,
-    speedup=ARGS.speedup,
+    env_path="path/to/Downfall.x86_64",
+    show_window=False,     # set True to see the game while training
+    seed=0,
+    n_parallel=8,          # run 8 game instances in parallel
+    speedup=5.0,           # speed multiplier inside Godot
 )
-env = VecMonitor(env)  # monitors rewards, episode lengths
+
+env = VecMonitor(env)
 ```
 
-2. **Create the PPO model**
+`VecMonitor` records episode reward and length for later analysis.
+
+### 5.3 Define the PPO agent
 
 ```python
 from stable_baselines3 import PPO
 
 model = PPO(
-    "MultiInputPolicy",        # for dict/flat obs from Godot
-    env,
-    ent_coef=0.0001,           # entropy bonus
-    n_steps=32,                # rollout length per env before update
-    learning_rate=0.0003,      # or a linear schedule
-    tensorboard_log=ARGS.experiment_dir,
+    policy="MultiInputPolicy",
+    env=env,
+    learning_rate=0.0003,
+    n_steps=32,
+    batch_size=256,
+    gamma=0.99,
+    gae_lambda=0.95,
+    clip_range=0.2,
+    ent_coef=0.0001,
     verbose=2,
+    tensorboard_log="logs/sb3",
 )
 ```
 
-3. **Train**
+Explanation of key settings in simple terms:
+
+- `policy`: uses a neural network that can handle the observation format produced by Godot  
+- `learning_rate`: size of parameter updates. A smaller value gives slower but usually more stable learning  
+- `n_steps`: number of steps collected per environment before doing a training update  
+- `batch_size`: number of samples used in each gradient step during learning  
+- `gamma`: how much the agent cares about future reward compared to immediate reward  
+- `clip_range`: bounds how much the new policy is allowed to change compared to the old one in a single update  
+
+### 5.4 Run training
+
+Example training script:
 
 ```python
+total_timesteps = 1_000_000
+
 model.learn(
-    total_timesteps=ARGS.timesteps,
-    tb_log_name=ARGS.experiment_name,
-    callback=checkpoint_callback_if_any,
+    total_timesteps=total_timesteps,
+    tb_log_name="downfall_ppo",
 )
+
+model.save("models/downfall_ppo.zip")
 ```
 
-4. **Save / export**
-   - Save Stable-Baselines model (`.zip`) if `--save_model_path` is provided.
-   - Optionally export to ONNX via `export_model_as_onnx` for deployment.
-
-5. **Inference (testing visually)**
-   - Use `--inference` mode to run the trained policy for a number of steps in the Godot environment (with `--viz` to see it play).
+`total_timesteps` is the total number of environment steps seen across all parallel instances. For example, with 8 parallel environments and `n_steps = 32`, each update uses `8 * 32 = 256` steps.
 
 ---
 
-## 4. Reward model
+## 6. Reward model
 
-The **reward logic lives in the Godot scripts**, mainly `player.gd` and the hazard/goal scripts. Conceptually:
+The reward model is implemented on the Godot side in `player.gd` and related scripts. Its goal is to guide the agent toward safe and efficient completion of the four stages.
 
-- **Per-step shaping:**
-  - Small negative reward per step (time penalty) to encourage fast completion.
-  - Positive shaping reward when the agent moves closer to the goal (e.g., based on change in distance).
-- **Positive terminal rewards:**
-  - Large positive reward when the player reaches the end gate (`level_complete()`).
-  - Optionally additional rewards for reaching intermediate checkpoints or levels.
-- **Negative terminal rewards:**
-  - Significant negative reward when the player:
-    - Falls off the map (e.g., y < some threshold),
-    - Is hit by critical hazards (bombs, spikes, etc.),
-    - Possibly times out without reaching the goal.
+Typical reward components are:
 
-All these events update a shared `reward` variable, which `ai_controller.gd` reads and resets in `get_reward()` each decision step. The RL algorithm only sees the final scalar reward per step; all shaping happens inside the Godot game logic.
+1. Progress reward  
+   - At each step compute the distance from the player to the current stage goal.  
+   - If the player moves closer to the goal since the previous step, give a small positive reward.  
+   - If the player moves away from the goal, give a small negative reward.
+
+2. Time penalty  
+   - Give a small negative reward at every step.  
+   - This discourages the agent from standing still or wandering without progress.  
+
+3. Stage completion reward  
+   - When the agent reaches the end gate of a stage, give a large positive reward.  
+   - When the agent clears stage 4 and reaches the final goal, give the largest positive reward and mark the episode as success.  
+
+4. Failure penalties  
+   - If the player:
+     - Falls below a safe vertical threshold  
+     - Is hit by a bomb or similar hazard  
+     - Gets stuck until time limit is reached  
+   - Then:
+     - Give a large negative reward  
+     - Mark the episode as done  
+
+Implementation pattern:
+
+- `player.gd` keeps a variable such as `current_reward`.  
+- Hazard or goal scripts call methods on the player to add or subtract from `current_reward` and set flags for death or success.  
+- `ai_controller.gd`:
+  - Returns `current_reward` in `get_reward()` and then resets it to zero.  
+  - Uses flags to compute `done` and to decide when to call `reset()`.
+
+This design makes the reward logic easy to change without modifying the Python training code.
 
 ---
 
-## 5. Training progression (screenshot)
+## 7. Training progression and logs
 
-Training metrics are logged automatically via TensorBoard.
+Training progression is recorded using TensorBoard.
 
-1. **Run training**, for example:
+### 7.1 Logging setup
 
-```bash
-python train_downfall_ppo.py   --env_path path/to/Downfall.x86_64   --experiment_dir logs/sb3   --experiment_name downfall_ppo   --timesteps 1000000
-```
+When `tensorboard_log="logs/sb3"` is set in the PPO constructor, running `model.learn(...)` will create log files under `logs/sb3/downfall_ppo`.
 
-2. **Launch TensorBoard**:
+Logged metrics include:
+
+- Mean reward per episode  
+- Mean episode length  
+- Policy loss  
+- Value loss  
+
+### 7.2 Viewing curves and saving screenshots
+
+To inspect the training process:
 
 ```bash
 tensorboard --logdir logs/sb3
 ```
 
-3. **Open the TensorBoard URL** (e.g., `http://localhost:6006`) and inspect:
-   - `rollout/ep_rew_mean` – mean episode reward over time.
-   - `rollout/ep_len_mean` – mean episode length.
-   - Optional: `train/value_loss`, `train/policy_loss`, etc.
+Open the URL printed in the terminal in a browser. Plots will show how mean reward and other metrics change over time.
 
-4. **Training progression screenshot**:
-   - Capture a plot with:
-     - X-axis: timesteps,
-     - Y-axis: `rollout/ep_rew_mean`.
-   - As the agent learns, you should see mean episode reward increase and then stabilize.
+To include a training progression screenshot in this project:
 
-This plot can be directly included in reports as the **training curve** for the Downfall agent.
+1. Open TensorBoard and select the plots you care about, for example mean episode reward vs timesteps.  
+2. Take a screenshot and save it, for example as `docs/images/training_curve.png`.  
+3. Add the image to the README:
+
+```markdown
+![Training progression](docs/images/training_curve.png)
+```
 
 ---
 
-## 6. Accuracy testing / evaluation
+## 8. Accuracy testing and evaluation protocol
 
-After training, evaluation is done by **running the trained agent in the environment** and measuring performance over many episodes.
+After training, we measure how well the agent plays the game. This section describes a simple evaluation procedure.
 
-Typical evaluation procedure:
-
-1. **Load the trained model** and create an evaluation environment (usually with `n_parallel = 1` for cleaner logging).
-
-2. **Run multiple episodes** with **deterministic actions**:
-   - For each episode:
-     - Reset env,
-     - Run until done,
-     - Accumulate the total reward,
-     - Track whether the episode ended in success (reaching the goal) or failure.
-
-3. **Compute metrics** such as:
-   - **Mean episode reward** – average return per episode.
-   - **Success rate** – fraction of episodes where the agent reaches the end gate.
-   - **Average time to success** – mean number of steps taken in successful episodes.
-
-Example (conceptual) evaluation code:
+### 8.1 Evaluation script
 
 ```python
 import numpy as np
+from godot_rl.wrappers.stable_baselines_wrapper import StableBaselinesGodotEnv
+from stable_baselines3 import PPO
+
+model = PPO.load("models/downfall_ppo.zip")
+
+env_eval = StableBaselinesGodotEnv(
+    env_path="path/to/Downfall.x86_64",
+    show_window=True,
+    seed=123,
+    n_parallel=1,
+    speedup=1.0,
+)
 
 n_eval_episodes = 100
 episode_rewards = []
 successes = 0
 
 for ep in range(n_eval_episodes):
-    obs = env.reset()
-    done = False
+    obs = env_eval.reset()
+    done = [False]
     total_reward = 0.0
     success = False
 
-    while not done:
+    while not done[0]:
         action, _ = model.predict(obs, deterministic=True)
-        obs, reward, done, info = env.step(action)
-        total_reward += reward
+        obs, reward, done, info = env_eval.step(action)
+        total_reward += reward[0]
 
-        # Option 1: if the env provides a success flag in info:
-        # if info.get("success", False):
-        #     success = True
+        # If the environment sets a "success" flag in info:
+        if info[0].get("success", False):
+            success = True
 
     episode_rewards.append(total_reward)
+    if success:
+        successes += 1
 
-    # Option 2: define success via reward threshold or custom logic:
-    # if success or total_reward > some_threshold:
-    #     successes += 1
+mean_reward = float(np.mean(episode_rewards))
+std_reward = float(np.std(episode_rewards))
+success_rate = successes / n_eval_episodes
 
-print("Mean reward:", np.mean(episode_rewards))
-print("Std reward:", np.std(episode_rewards))
-print("Success rate:", successes / n_eval_episodes)
+print("Mean reward per episode:", mean_reward)
+print("Reward standard deviation:", std_reward)
+print("Success rate:", success_rate)
 ```
 
-These metrics serve as the “accuracy” of the RL agent in the Downfall game, how reliably and efficiently it clears levels.
+### 8.2 Reported metrics
+
+For Downfall experiments, report at least:
+
+- Mean reward per episode over evaluation runs  
+- Reward standard deviation  
+- Success rate: fraction of episodes in which the agent clears all four stages  
+- Average number of steps in successful episodes (optional but useful)  
+
+Together with the training curves this describes how accurate and reliable the agent is.
+
+---
+
+## 9. How to run the project
+
+### 9.1 Requirements
+
+- Godot engine version used for the game  
+- Python 3  
+- Python packages:
+  - `stable-baselines3`
+  - `godot-rl` or the Godot RL wrapper used in this repo
+  - `tensorboard`
+  - `numpy`
+
+Install dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+### 9.2 Train a new agent
+
+Example command:
+
+```bash
+python train_downfall_ppo.py   --env_path path/to/Downfall.x86_64   --experiment_dir logs/sb3   --experiment_name downfall_ppo   --timesteps 1000000
+```
+
+Adjust `--timesteps` depending on how much training you want to perform.
+
+### 9.3 Run a trained agent
+
+```bash
+python train_downfall_ppo.py   --env_path path/to/Downfall.x86_64   --load_model_path models/downfall_ppo.zip   --inference   --viz   --timesteps 100000
+```
+
+This will load the saved PPO agent, run it in the Godot environment and display the four stages in a game window.
+
+---
+
+## 10. Media (video and images)
+
+### 10.1 Training and gameplay video
+
+A short video showing the trained agent clearing all four stages:
+
+- [Downfall training and gameplay video](LINK_TO_TRAINING_VIDEO)
+
+Replace `LINK_TO_TRAINING_VIDEO` with the actual URL to your video recording (for example a YouTube link).
+
+### 10.2 Screenshots
+
+You can include images to better illustrate the environment and the agent behavior. Example layout:
+
+```markdown
+![Stage 1 overview](docs/images/stage1_overview.png)
+![Stage 2 obstacles](docs/images/stage2_obstacles.png)
+![Stage 3 moving hazards](docs/images/stage3_hazards.png)
+![Stage 4 final goal](docs/images/stage4_goal.png)
+![Agent mid training](docs/images/agent_mid_training.png)
+![Agent after training](docs/images/agent_after_training.png)
+```
+
+Update the file paths to match your repository structure.
+
+---
+
+## 11. Repository structure
+
+A possible folder layout is:
+
+```text
+.
+├─ Downfall/                     Godot project
+├─ models/
+│  └─ downfall_ppo.zip           Saved PPO model
+├─ logs/
+│  └─ sb3/                       TensorBoard logs
+├─ docs/
+│  └─ images/                    Screenshots for README
+├─ train_downfall_ppo.py         Training and inference script
+├─ requirements.txt              Python dependencies
+└─ README.md                     This file
+```
+
+Folder and file names can be adjusted, but keeping a similar structure makes it easier to reproduce the results.
