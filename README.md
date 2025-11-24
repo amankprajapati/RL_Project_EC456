@@ -23,10 +23,10 @@ The agent receives information about the environment using raycasts from Godot a
 4. Training data (interaction data)  
 5. Steps to build and train the RL model  
 6. Reward model  
-7. Training progression and logs  
+7. Training logs  
 8. Accuracy testing and evaluation protocol  
 9. How to run the project  
-10. Media (videos)   
+10. Outputs, trained agent inference (videos)   
 ---
 
 ## 1. Project overview
@@ -337,19 +337,6 @@ print("Mean reward per episode:", mean_reward)
 print("Reward standard deviation:", std_reward)
 print("Success rate:", success_rate)
 ```
-
-### 8.2 Reported metrics
-
-For Downfall experiments, report at least:
-
-- Mean reward per episode over evaluation runs  
-- Reward standard deviation  
-- Success rate: fraction of episodes in which the agent clears all four stages  
-- Average number of steps in successful episodes (optional but useful)  
-
-Together with the training curves this describes how accurate and reliable the agent is.
-
----
 
 ## 9. How to run the project
 
