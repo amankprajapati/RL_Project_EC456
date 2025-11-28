@@ -394,10 +394,10 @@ Replace each placeholder link with your actual video URLs.
   - [Training logs video](https://drive.google.com/file/d/1nDrVzh-0TOIlIWmmXZe013wXYlOuQ8bX/view?usp=sharing)
 
 - Training process run (video of the environment while PPO is learning)  
-  - [Training process video](https://drive.google.com/file/d/1RBJ7i1SjAhGZUmEBI54m4Q6yGqLcDBP7/view?usp=drive_link)
+  - [Training process video](https://drive.google.com/file/d/1RBJ7i1SjAhGZUmEBI54m4Q6yGqLcDBP7/view?usp=sharing)
 
 - Trained agent inference (final agent playing all four stages)  
-  - [Trained agent inference video](https://drive.google.com/file/d/1MSikgtYT5v_RyvEKSfQAtSF6lBIJ14oB/view?usp=drive_link)
+  - [Trained agent inference video](https://drive.google.com/file/d/1MSikgtYT5v_RyvEKSfQAtSF6lBIJ14oB/view?usp=sharing)
 
 
 
