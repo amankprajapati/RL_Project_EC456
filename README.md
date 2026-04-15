@@ -17,10 +17,6 @@ The agent receives information about the environment using raycasts from Godot a
 
 - Aman Kumar Prajapati (22BEC006)  
 - Arjit Verma (22BCS015)  
-- Nabeel Ahsan (22BEC026)  
-- Arsalan Shaik (22BDS053)  
-- Subburi Dheeraj Verma (22BCS125)  
-
 ---
 
 ## Table of contents
